@@ -1,0 +1,40 @@
+# SBR Violation Tracker — Buildium Inbound Sync
+# Runs daily at 8:00 AM Arizona time (MST = UTC-7)
+# Checks for homeowner responses in Buildium Resident Center
+
+name: Buildium Inbound Sync
+
+on:
+  schedule:
+    - cron: '0 15 * * *'   # 8:00 AM MST (UTC-7) every day
+  workflow_dispatch:         # Manual trigger
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install supabase requests
+
+      - name: Run Buildium inbound sync
+        env:
+          SUPABASE_URL:          ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY:  ${{ secrets.SUPABASE_SERVICE_KEY }}
+          BUILDIUM_CLIENT_ID:    ${{ secrets.BUILDIUM_CLIENT_ID }}
+          BUILDIUM_CLIENT_SECRET:${{ secrets.BUILDIUM_CLIENT_SECRET }}
+          GMAIL_FROM:            ${{ secrets.GMAIL_FROM }}
+          GMAIL_APP_PASSWORD:    ${{ secrets.GMAIL_APP_PASSWORD }}
+          CRYSTAL_EMAIL:         ${{ secrets.CRYSTAL_EMAIL }}
+          RESOLUTION_PORTAL_URL: ${{ secrets.RESOLUTION_PORTAL_URL }}
+        run: python backend/buildium_inbound_sync.py

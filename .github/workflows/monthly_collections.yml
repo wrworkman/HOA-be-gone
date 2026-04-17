@@ -1,0 +1,34 @@
+name: Monthly Collections Run
+
+on:
+  schedule:
+    # Runs at 8:00 AM UTC on the 2nd of every month
+    # UTC 8am = 1am MST / 2am MDT — runs overnight, done before Crystal arrives
+    - cron: '0 8 2 * *'
+  workflow_dispatch:
+    # Allows manual trigger from GitHub Actions tab at any time
+
+jobs:
+  run-collections:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests python-dotenv
+
+      - name: Run collections script
+        env:
+          BUILDIUM_CLIENT_ID:     ${{ secrets.BUILDIUM_CLIENT_ID }}
+          BUILDIUM_CLIENT_SECRET: ${{ secrets.BUILDIUM_CLIENT_SECRET }}
+          EMAIL_FROM:             ${{ secrets.EMAIL_FROM }}
+          EMAIL_PASSWORD:         ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_TO:               ${{ secrets.EMAIL_TO }}
+        run: python sbr_collections_automation.py

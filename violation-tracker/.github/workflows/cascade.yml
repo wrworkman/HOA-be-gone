@@ -1,0 +1,49 @@
+# SBR Violation Tracker — Cascade Engine
+# Runs every 30 minutes to process new violations
+# Also runs on push so you can test manually
+
+name: Cascade Engine
+
+on:
+  schedule:
+    - cron: '0,30 * * * *'   # Every 30 minutes, every hour
+  push:
+    branches: [main]
+    paths:
+      - 'backend/cascade.py'
+  workflow_dispatch:           # Manual trigger from GitHub Actions UI
+
+jobs:
+  run-cascade:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install supabase twilio requests
+
+      - name: Run cascade engine
+        env:
+          SUPABASE_URL:          ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY:  ${{ secrets.SUPABASE_SERVICE_KEY }}
+          BUILDIUM_CLIENT_ID:    ${{ secrets.BUILDIUM_CLIENT_ID }}
+          BUILDIUM_CLIENT_SECRET:${{ secrets.BUILDIUM_CLIENT_SECRET }}
+          TWILIO_ACCOUNT_SID:    ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN:     ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_FROM_NUMBER:    ${{ secrets.TWILIO_FROM_NUMBER }}
+          GMAIL_FROM:            ${{ secrets.GMAIL_FROM }}
+          GMAIL_APP_PASSWORD:    ${{ secrets.GMAIL_APP_PASSWORD }}
+          LOB_API_KEY:           ${{ secrets.LOB_API_KEY }}
+          CRYSTAL_EMAIL:         ${{ secrets.CRYSTAL_EMAIL }}
+          CRYSTAL_PHONE:         ${{ secrets.CRYSTAL_PHONE }}
+          RESOLUTION_PORTAL_URL: ${{ secrets.RESOLUTION_PORTAL_URL }}
+        run: python backend/cascade.py

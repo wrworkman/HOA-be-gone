@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="SBR Violations">
+  <meta name="theme-color" content="#1e40af">
+  <title>SBR Violation Tracker</title>
+  <link rel="manifest" href="manifest.json">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f0f4f8; min-height: 100vh; max-width: 500px;
+      margin: 0 auto; -webkit-overflow-scrolling: touch;
+    }
+    .screen { display: none; min-height: 100vh; flex-direction: column; }
+    .screen.active { display: flex; }
+
+    /* Header */
+    .header {
+      background: #1e40af; color: white; padding: 13px 16px;
+      display: flex; align-items: center; gap: 10px;
+      position: sticky; top: 0; z-index: 10;
+    }
+    .header-back { background: none; border: none; color: white; font-size: 26px; cursor: pointer; padding: 0 4px 0 0; line-height: 1; }
+    .header h1 { font-size: 17px; font-weight: 700; }
+    .header .sub { font-size: 11px; opacity: 0.75; margin-top: 1px; }
+
+    /* Scrollable body */
+    .body { flex: 1; padding: 14px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
+    .success-body { flex: 1; padding: 36px 22px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; text-align: center; }
+
+    /* Banners */
+    .banner { border-radius: 10px; padding: 11px 14px; display: flex; align-items: flex-start; gap: 10px; }
+    .bw  { background: #fef3c7; border: 1px solid #f59e0b; }
+    .bd  { background: #fee2e2; border: 1px solid #fca5a5; }
+    .bi  { background: #dbeafe; border: 1px solid #93c5fd; }
+    .bq  { background: #fef3c7; border: 1px solid #fbbf24; }
+    .bg  { background: #d1fae5; border: 1px solid #6ee7b7; }
+    .banner .icon { font-size: 17px; flex-shrink: 0; margin-top: 1px; }
+    .banner .text { font-size: 13px; font-weight: 500; line-height: 1.4; }
+    .bw .text { color: #92400e; }
+    .bd .text { color: #991b1b; }
+    .bi .text { color: #1e40af; }
+    .bq .text { color: #92400e; }
+    .bg .text { color: #065f46; }
+
+    /* Buttons */
+    .btn { border: none; border-radius: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; font-weight: 700; transition: transform 0.1s; font-family: inherit; }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary  { background: #1e40af; color: white; padding: 17px 20px; font-size: 16px; }
+    .btn-green    { background: #059669; color: white; padding: 17px 20px; font-size: 16px; }
+    .btn-secondary{ background: white; color: #1e40af; border: 2px solid #1e40af; padding: 13px 20px; font-size: 14px; }
+    .btn-ghost    { background: #f3f4f6; color: #374151; padding: 11px 16px; font-size: 13px; font-weight: 600; }
+    .btn-sm       { background: rgba(0,0,0,0.55); color: white; border: none; border-radius: 20px; padding: 5px 13px; font-size: 12px; cursor: pointer; font-weight: 600; }
+    .btn-resolve  { background: #d1fae5; color: #065f46; border: 1.5px solid #6ee7b7; padding: 10px 14px; font-size: 13px; font-weight: 700; border-radius: 8px; cursor: pointer; flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; }
+    .btn-followup { background: #dbeafe; color: #1e40af; border: 1.5px solid #93c5fd; padding: 10px 14px; font-size: 13px; font-weight: 700; border-radius: 8px; cursor: pointer; flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; }
+
+    /* Section heading */
+    .section-title { font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+
+    /* Today's card (home) */
+    .today-card { background: white; border-radius: 10px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.07); margin-bottom: 7px; }
+    .card-addr  { font-size: 13px; font-weight: 600; color: #111; }
+    .card-lbl   { font-size: 12px; color: #6b7280; margin-top: 2px; }
+    .pill { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px; white-space: nowrap; flex-shrink: 0; margin-left: 8px; }
+    .s-open     { background: #fee2e2; color: #991b1b; }
+    .s-pending  { background: #fef3c7; color: #92400e; }
+    .s-resolved { background: #d1fae5; color: #065f46; }
+    .s-followup { background: #dbeafe; color: #1e40af; }
+
+    /* Inspection list cards */
+    .insp-card {
+      background: white; border-radius: 12px; overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 10px;
+    }
+    .insp-card.done { opacity: 0.45; }
+    .insp-photo { width: 90px; height: 90px; object-fit: cover; flex-shrink: 0; background: #e5e7eb; display: block; }
+    .insp-photo-placeholder { width: 90px; height: 90px; background: #f3f4f6; display: flex; align-items: center; justify-content: center; font-size: 28px; flex-shrink: 0; }
+    .insp-body  { padding: 10px 12px; flex: 1; min-width: 0; }
+    .insp-addr  { font-size: 13px; font-weight: 700; color: #111; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .insp-viol  { font-size: 12px; color: #6b7280; margin-top: 2px; }
+    .insp-meta  { font-size: 11px; color: #9ca3af; margin-top: 3px; }
+    .insp-actions { display: flex; gap: 6px; padding: 8px 10px; border-top: 1px solid #f3f4f6; background: #fafafa; }
+    .done-check { font-size: 22px; padding: 8px 12px; }
+
+    /* Comparison card (new photo vs old) */
+    .compare-wrap { border-radius: 10px; overflow: hidden; border: 1.5px solid #93c5fd; background: #eff6ff; }
+    .compare-header { padding: 9px 12px; font-size: 12px; font-weight: 700; color: #1e40af; background: #dbeafe; display: flex; align-items: center; gap: 6px; }
+    .compare-photos { display: flex; gap: 0; }
+    .compare-col { flex: 1; display: flex; flex-direction: column; }
+    .compare-col-label { font-size: 10px; font-weight: 700; text-align: center; padding: 5px 0; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; }
+    .compare-col img { width: 100%; height: 130px; object-fit: cover; display: block; }
+    .compare-divider { width: 2px; background: #bfdbfe; }
+    .compare-actions { padding: 10px; display: flex; gap: 8px; }
+    .cmp-btn { flex: 1; padding: 10px 6px; border: none; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; }
+    .cmp-same    { background: #fee2e2; color: #991b1b; }
+    .cmp-new     { background: #f3f4f6; color: #374151; }
+    .cmp-same.selected { background: #dc2626; color: white; }
+    .cmp-new.selected  { background: #1e40af; color: white; }
+
+    /* Capture */
+    .capture-zone { background: #111827; border-radius: 14px; min-height: 230px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; gap: 10px; }
+    .capture-circle { background: white; border: none; border-radius: 50%; width: 72px; height: 72px; font-size: 32px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(0,0,0,0.35); cursor: pointer; }
+    .capture-hint { color: #9ca3af; font-size: 13px; }
+    #photoInput { display: none; }
+
+    /* Photo preview */
+    .photo-preview-wrap { border-radius: 12px; overflow: hidden; position: relative; background: #e5e7eb; }
+    .photo-preview-wrap img { width: 100%; max-height: 200px; object-fit: cover; display: block; }
+    .retake-btn { position: absolute; bottom: 8px; right: 8px; }
+
+    /* Form fields */
+    .field-group { display: flex; flex-direction: column; gap: 5px; }
+    .field-label { font-size: 13px; font-weight: 600; color: #374151; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .gps-loading { font-size: 11px; color: #f59e0b; font-weight: 500; }
+    .gps-ready   { font-size: 11px; color: #10b981; font-weight: 500; }
+    .coords-hint { font-size: 11px; color: #9ca3af; font-family: monospace; }
+    .viol-note   { font-size: 12px; color: #6b7280; padding: 3px 2px; display: none; }
+    input[type="text"], select, textarea {
+      width: 100%; padding: 11px 13px; border: 1.5px solid #d1d5db; border-radius: 8px;
+      font-size: 16px; background: white; color: #111; -webkit-appearance: none; font-family: inherit;
+    }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: #1e40af; }
+    textarea { resize: none; min-height: 76px; }
+    select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px; }
+    .submit-meta { font-size: 11px; color: #9ca3af; text-align: center; }
+
+    /* Success */
+    .success-icon { font-size: 68px; }
+    .success-ref  { font-size: 24px; font-weight: 800; color: #1e40af; font-family: monospace; }
+    .success-detail { font-size: 14px; color: #374151; line-height: 1.65; }
+
+    /* Progress bar (inspection) */
+    .progress-bar-wrap { background: #e5e7eb; border-radius: 6px; height: 8px; overflow: hidden; }
+    .progress-bar-fill { background: #1e40af; height: 100%; border-radius: 6px; transition: width 0.4s; }
+    .progress-label    { font-size: 12px; color: #6b7280; text-align: right; margin-top: 3px; }
+
+    /* Offline pill */
+    .offline-pill { background: #dc2626; color: white; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 4px; display: none; }
+    .offline-pill.show { display: inline-block; }
+
+    /* Empty state */
+    .empty { color: #9ca3af; font-size: 14px; text-align: center; padding: 20px 0; }
+
+    /* Loading overlay */
+    #loadingOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.52); display: none; align-items: center; justify-content: center; flex-direction: column; gap: 14px; z-index: 999; }
+    #loadingOverlay.show { display: flex; }
+    .spinner { width: 44px; height: 44px; border: 4px solid rgba(255,255,255,0.25); border-top-color: white; border-radius: 50%; animation: spin 0.75s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { color: white; font-size: 15px; font-weight: 600; }
+
+    /* Badge counter */
+    .badge-count { background: #dc2626; color: white; font-size: 11px; font-weight: 700; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; margin-left: 6px; }
+  </style>
+</head>
+<body>
+
+<div id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">Loading…</div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     HOME
+══════════════════════════════════════════════ -->
+<div class="screen active" id="screenHome">
+  <div class="header">
+    <div style="flex:1">
+      <div style="display:flex;align-items:center;gap:8px">
+        <h1>SBR Violations</h1>
+        <span class="offline-pill" id="offlinePill">OFFLINE</span>
+      </div>
+      <div class="sub">Signal Butte Ranch · Officer: Crystal</div>
+    </div>
+  </div>
+  <div class="body">
+    <div class="banner bw" id="trashBanner" style="display:none">
+      <div class="icon">🗑️</div>
+      <div class="text" id="trashBannerText"></div>
+    </div>
+    <div class="banner bq" id="queueBanner" style="display:none">
+      <div class="icon">📤</div>
+      <div class="text" id="queueBannerText"></div>
+    </div>
+
+    <!-- Two primary actions -->
+    <button class="btn btn-green" onclick="startInspection()">
+      📋&nbsp; Start Inspection
+      <span class="badge-count" id="openCount">…</span>
+    </button>
+    <button class="btn btn-primary" onclick="startNewViolation()">
+      📸&nbsp; Log New Violation
+    </button>
+
+    <!-- Today's work -->
+    <div>
+      <div class="section-title">Today's Submissions</div>
+      <div id="recentList"><div class="empty">No submissions today.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     INSPECTION MODE
+══════════════════════════════════════════════ -->
+<div class="screen" id="screenInspection">
+  <div class="header">
+    <button class="header-back" onclick="showScreen('home')">‹</button>
+    <div style="flex:1">
+      <h1>Inspection</h1>
+      <div class="sub" id="inspSubtitle">Loading open violations…</div>
+    </div>
+    <button onclick="syncInspectionList()" style="background:none;border:none;color:white;font-size:20px;cursor:pointer" title="Refresh">↻</button>
+  </div>
+  <div class="body">
+    <!-- Progress -->
+    <div>
+      <div class="progress-bar-wrap"><div class="progress-bar-fill" id="inspProgress" style="width:0%"></div></div>
+      <div class="progress-label" id="inspProgressLabel">0 of 0 checked</div>
+    </div>
+
+    <div class="banner bi">
+      <div class="icon">💡</div>
+      <div class="text">Walk the community and check each violation below. Tap <strong>✓ Resolved</strong> if fixed, or <strong>📷 Still Here</strong> to add a new photo and escalate.</div>
+    </div>
+
+    <div id="inspList"><div class="empty">Loading…</div></div>
+
+    <!-- Done button -->
+    <button class="btn btn-primary" id="inspDoneBtn" onclick="finishInspection()" style="display:none">
+      ✅&nbsp; Finish Inspection
+    </button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     CAPTURE PHOTO
+══════════════════════════════════════════════ -->
+<div class="screen" id="screenCapture">
+  <div class="header">
+    <button class="header-back" id="captureBack" onclick="showScreen('home')">‹</button>
+    <div>
+      <h1 id="captureTitleText">Take Photo</h1>
+      <div class="sub" id="captureSubtitle">Photograph the violation clearly</div>
+    </div>
+  </div>
+  <div class="body">
+    <div class="capture-zone" onclick="triggerCamera()">
+      <button class="capture-circle">📷</button>
+      <div class="capture-hint">Tap to open camera</div>
+    </div>
+    <input type="file" id="photoInput" accept="image/*" capture="environment" onchange="onPhotoSelected(event)">
+    <div style="color:#6b7280;font-size:13px;text-align:center;line-height:1.6">
+      Take a clear, close photo showing the violation.<br>GPS is captured automatically.
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     VIOLATION FORM
+══════════════════════════════════════════════ -->
+<div class="screen" id="screenForm">
+  <div class="header">
+    <button class="header-back" onclick="showScreen('capture')">‹</button>
+    <div>
+      <h1>Violation Details</h1>
+      <div class="sub" id="formBadge">New violation</div>
+    </div>
+  </div>
+  <div class="body">
+    <!-- Photo preview -->
+    <div class="photo-preview-wrap">
+      <img id="photoPreview" src="" alt="Violation photo">
+      <button class="btn-sm retake-btn" onclick="showScreen('capture')">Retake ↺</button>
+    </div>
+
+    <!-- Comparison card (shown if follow-up detected) -->
+    <div id="compareCard" style="display:none"></div>
+
+    <!-- Active violations banner -->
+    <div class="banner bd" id="openViolsBanner" style="display:none">
+      <div class="icon">⚠️</div>
+      <div class="text" id="openViolsText"></div>
+    </div>
+
+    <!-- Address -->
+    <div class="field-group">
+      <div class="field-label">
+        📍 Property Address
+        <span class="gps-loading" id="gpsLoadingLabel">Getting GPS…</span>
+        <span class="gps-ready"   id="gpsReadyLabel" style="display:none">✓ GPS locked</span>
+      </div>
+      <input type="text" id="addressInput" placeholder="Fetching address from GPS…" oninput="onAddressEdit()">
+      <div class="coords-hint" id="coordsHint"></div>
+    </div>
+
+    <!-- Category -->
+    <div class="field-group">
+      <div class="field-label">📋 Violation Category</div>
+      <select id="categorySelect" onchange="onCategoryChange()">
+        <option value="">— Select Category —</option>
+      </select>
+    </div>
+
+    <!-- Specific violation -->
+    <div class="field-group">
+      <div class="field-label">⚠️ Specific Violation</div>
+      <select id="violationSelect" disabled onchange="onViolationChange()">
+        <option value="">— Select Category First —</option>
+      </select>
+      <div class="viol-note" id="violNote"></div>
+    </div>
+
+    <!-- Notes -->
+    <div class="field-group">
+      <div class="field-label">📝 Notes <span style="font-weight:400;color:#9ca3af">(optional)</span></div>
+      <textarea id="notesInput" placeholder="Unit number, visible from street, prior conversations, etc."></textarea>
+    </div>
+
+    <button class="btn btn-primary" onclick="submitViolation()">✅&nbsp; Submit</button>
+    <div class="submit-meta" id="submitMeta"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     RESOLVE IN FIELD (confirm screen)
+══════════════════════════════════════════════ -->
+<div class="screen" id="screenResolve">
+  <div class="header">
+    <button class="header-back" onclick="showScreen('inspection')">‹</button>
+    <div>
+      <h1>Mark Resolved</h1>
+      <div class="sub">Confirm the issue is fixed</div>
+    </div>
+  </div>
+  <div class="body">
+    <div class="banner bg">
+      <div class="icon">✅</div>
+      <div class="text" id="resolveConfirmText">Are you sure this violation has been corrected?</div>
+    </div>
+
+    <!-- Prior violation photo -->
+    <div id="resolvePriorPhoto" style="display:none">
+      <div class="section-title">Prior Violation Photo</div>
+      <img id="resolvePriorImg" src="" style="width:100%;border-radius:10px;display:block">
+    </div>
+
+    <!-- Optional resolution photo -->
+    <div class="field-group">
+      <div class="field-label">📷 Resolution Photo <span style="font-weight:400;color:#9ca3af">(optional but recommended)</span></div>
+      <div id="resolveUploadZone" style="background:#f9fafb;border:2px dashed #d1d5db;border-radius:10px;padding:20px;text-align:center;cursor:pointer" onclick="document.getElementById('resolvePhotoInput').click()">
+        <div style="font-size:28px">📷</div>
+        <div style="font-size:13px;color:#6b7280;margin-top:6px">Tap to add an optional photo</div>
+      </div>
+      <div id="resolvePreviewWrap" style="display:none;position:relative">
+        <img id="resolvePreview" src="" style="width:100%;border-radius:10px;display:block">
+        <button class="btn-sm" style="position:absolute;bottom:8px;right:8px" onclick="clearResolvePhoto()">Change ↺</button>
+      </div>
+      <input type="file" id="resolvePhotoInput" accept="image/*" capture="environment" onchange="onResolvePhotoSelected(event)" style="display:none">
+    </div>
+
+    <div class="field-group">
+      <div class="field-label">📝 Notes <span style="font-weight:400;color:#9ca3af">(optional)</span></div>
+      <textarea id="resolveNotes" placeholder="e.g. Weeds cleared, new rock installed"></textarea>
+    </div>
+
+    <button class="btn btn-green" onclick="confirmResolveInField()">✅&nbsp; Confirm — Mark Resolved</button>
+    <button class="btn btn-ghost" onclick="showScreen('inspection')" style="margin-top:-4px">Cancel</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SUCCESS
+══════════════════════════════════════════════ -->
+<div class="screen" id="screenSuccess">
+  <div class="header">
+    <div><h1>Done</h1><div class="sub">Signal Butte Ranch HOA</div></div>
+  </div>
+  <div class="success-body">
+    <div class="success-icon" id="successIcon">✅</div>
+    <div class="success-ref"    id="successRef"></div>
+    <div class="success-detail" id="successDetail"></div>
+    <button class="btn btn-green"     onclick="startInspection()" id="successBackToInspection" style="display:none">📋&nbsp; Back to Inspection</button>
+    <button class="btn btn-primary"   onclick="startNewViolation()">📸&nbsp; Log Another</button>
+    <button class="btn btn-secondary" onclick="showScreen('home')" style="margin-top:-4px">← Home</button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════════════════
+const CONFIG = {
+  SUPABASE_URL:      'https://YOUR_PROJECT_ID.supabase.co',
+  SUPABASE_ANON_KEY: 'YOUR_SUPABASE_ANON_KEY',
+  OFFICER:           'Crystal',
+};
+
+// ══════════════════════════════════════════════════════════
+// VIOLATION CATEGORIES
+// ══════════════════════════════════════════════════════════
+const CATEGORIES = [
+  { id:"exterior_maintenance", label:"Exterior Home Maintenance & Appearance", violations:[
+    { id:"peeling_paint",      label:"Peeling paint (house, garage door, trim, shed)",         note:"Only cite if significantly deteriorated" },
+    { id:"paint_color",        label:"Unapproved exterior paint color change (including fence)" },
+    { id:"damaged_gate_fence", label:"Broken, rusted, or damaged gate or fence" },
+    { id:"window_coverings",   label:"Unapproved or damaged window coverings (sheets, foil, torn screens)" },
+    { id:"roof_equipment",     label:"Roof-mounted equipment (non-approved solar panels)" },
+    { id:"shutters_awnings",   label:"Unmaintained shutters, awnings, or building elements" },
+  ]},
+  { id:"landscaping", label:"Landscaping & Yard Maintenance", violations:[
+    { id:"weeds",          label:"Overgrown weeds, noxious grass, or dead plants",          note:"Only cite if ongoing / over 6 inches" },
+    { id:"bare_dirt",      label:"Bare dirt or missing granite (must have grass, turf, or granite)" },
+    { id:"yard_clutter",   label:"Trash, broken items, or non-harmonious ornaments in yard" },
+    { id:"trees_pruning",  label:"Trees not properly pruned (low-hanging or blocking sidewalks)" },
+  ]},
+  { id:"structures", label:"Structures & Additions", violations:[
+    { id:"shed_visible",         label:"Shed or patio cover visible above fence line (unapproved)" },
+    { id:"unapproved_structure", label:"Oversized or unapproved ramada, gazebo, or play structure" },
+    { id:"driveway_expansion",   label:"Driveway expansion without ARC approval" },
+    { id:"wall_height",          label:"Perimeter wall height increase without approval" },
+    { id:"construction_quality", label:"Poor construction quality or unapproved materials" },
+  ]},
+  { id:"vehicles_parking", label:"Vehicle & Parking Violations", violations:[
+    { id:"parking_surface",     label:"Parking on unapproved surface (dirt or grass)" },
+    { id:"driveway_coverage",   label:"Driveway/parking area exceeds 50% of front yard" },
+    { id:"inoperable_vehicle",  label:"Vehicle with expired registration or inoperable condition" },
+    { id:"rv_trailer_boat",     label:"RV, trailer, boat, or truck over 1 ton visible from street" },
+    { id:"common_area_parking", label:"Using common area or vacant lot for vehicle access/parking" },
+    { id:"longterm_street",     label:"Long-term street parking (non-occasional)" },
+  ]},
+  { id:"trash_containers", label:"Trash & Containers", violations:[
+    { id:"bins_visible",  label:"Trash or recycling bins visible on non-collection day", note:"Do NOT cite day before/after Monday (black) or Thursday (blue) pickup" },
+    { id:"trash_outside", label:"Trash stored outside of designated covered containers" },
+  ]},
+  { id:"recreation", label:"Recreation & Equipment", violations:[
+    { id:"basketball_hoop",     label:"Unapproved basketball hoop (attached to house, torn, or poor condition)" },
+    { id:"holiday_decorations", label:"Holiday decorations not removed within 30 days" },
+  ]},
+  { id:"general_conduct", label:"General Use & Conduct", violations:[
+    { id:"home_business",    label:"Operating a business from home (zoning violation or creates traffic)" },
+    { id:"arc_construction", label:"Exterior construction without prior ARC approval" },
+    { id:"city_code",        label:"Using property in violation of Mesa City Code" },
+  ]},
+  { id:"common_areas", label:"Common Areas & Repairs", violations:[
+    { id:"common_wall_damage",  label:"Damage to Association common wall or landscaping during construction" },
+    { id:"common_modification", label:"Unauthorized modification to common area" },
+  ]},
+];
+
+// ══════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════
+let sb = null;
+
+// Current photo submission state
+let S = { photoFile:null, photoDataURL:null, lat:null, lng:null, address:'', gpsReady:false, isFollowUp:false, parentViolation:null };
+
+// Resolve-in-field state
+let R = { violation:null, photoFile:null, photoDataURL:null };
+
+// Inspection state
+let inspectionViolations = [];
+let inspectionChecked    = new Set(); // IDs of violations Crystal has reviewed this session
+let fromInspection       = false;     // true when capture was launched from inspection mode
+
+// ══════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════
+function init() {
+  if (!CONFIG.SUPABASE_URL.includes('YOUR_PROJECT')) {
+    sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+  }
+
+  // Category dropdown
+  const sel = document.getElementById('categorySelect');
+  CATEGORIES.forEach(cat => {
+    const o = document.createElement('option');
+    o.value = cat.id; o.textContent = cat.label; sel.appendChild(o);
+  });
+
+  renderTrashBanner();
+  updateOfflineUI();
+  window.addEventListener('online',  () => { updateOfflineUI(); tryFlushQueue(); });
+  window.addEventListener('offline', updateOfflineUI);
+
+  renderQueueBanner();
+  loadHomeData();
+  tryFlushQueue();
+
+  setInterval(() => {
+    const el = document.getElementById('submitMeta');
+    if (el) el.textContent = `Officer: ${CONFIG.OFFICER} · ${fmtTime(new Date())}`;
+  }, 10000);
+}
+
+// ══════════════════════════════════════════════════════════
+// SCREEN ROUTING
+// ══════════════════════════════════════════════════════════
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const id = 'screen' + name[0].toUpperCase() + name.slice(1);
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+// ══════════════════════════════════════════════════════════
+// TRASH BLACKOUT
+// ══════════════════════════════════════════════════════════
+function renderTrashBanner() {
+  const d = new Date().getDay();
+  const msgs = {
+    0:'Sunday — day before Monday black barrel pickup. Do NOT issue bin violations.',
+    1:'Monday — black barrel pickup day. Do NOT issue bin violations.',
+    2:'Tuesday — day after Monday pickup. Do NOT issue bin violations.',
+    3:'Wednesday — day before Thursday blue barrel pickup. Do NOT issue bin violations.',
+    4:'Thursday — blue barrel pickup day. Do NOT issue bin violations.',
+    5:'Friday — day after Thursday pickup. Do NOT issue bin violations.',
+  };
+  if (d in msgs) {
+    document.getElementById('trashBannerText').textContent = msgs[d];
+    document.getElementById('trashBanner').style.display = 'flex';
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// HOME DATA
+// ══════════════════════════════════════════════════════════
+async function loadHomeData() {
+  // Open violation count badge
+  if (sb) {
+    try {
+      const { count } = await sb.from('violations').select('id', { count:'exact', head:true }).in('status',['open','pending_resolution']);
+      document.getElementById('openCount').textContent = count || '0';
+    } catch(e) {}
+  }
+  loadRecentViolations();
+}
+
+async function loadRecentViolations() {
+  if (!sb) return;
+  const today = new Date().toISOString().split('T')[0];
+  try {
+    const { data } = await sb.from('violations')
+      .select('violation_ref, address, violation_label, status')
+      .gte('created_at', today + 'T00:00:00')
+      .order('created_at', { ascending: false }).limit(15);
+
+    const list = document.getElementById('recentList');
+    if (!data || !data.length) { list.innerHTML = '<div class="empty">No submissions today.</div>'; return; }
+
+    list.innerHTML = data.map(v => {
+      const s = v.status === 'pending_resolution' ? 'pending' : v.status === 'resolved' ? 'resolved' : 'open';
+      return `<div class="today-card">
+        <div style="flex:1;min-width:0">
+          <div class="card-addr">${v.address || '—'}</div>
+          <div class="card-lbl">${v.violation_label || '—'}</div>
+        </div>
+        <div class="pill s-${s}">${s==='pending'?'Pending':s==='resolved'?'Resolved':'Open'}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {}
+}
+
+// ══════════════════════════════════════════════════════════
+// INSPECTION MODE
+// ══════════════════════════════════════════════════════════
+async function startInspection() {
+  showScreen('inspection');
+  document.getElementById('inspSubtitle').textContent = 'Loading open violations…';
+  document.getElementById('inspList').innerHTML = '<div class="empty">Loading…</div>';
+  await syncInspectionList();
+}
+
+async function syncInspectionList() {
+  if (!sb) {
+    document.getElementById('inspList').innerHTML = '<div class="empty">Not connected to database.</div>';
+    return;
+  }
+
+  try {
+    const { data } = await sb.from('violations')
+      .select('id, violation_ref, address, violation_label, category_id, violation_id, stage, status, deadline_date, photo_url, created_at')
+      .in('status', ['open','pending_resolution'])
+      .order('address');
+
+    inspectionViolations = data || [];
+
+    // Cache for offline use
+    try { localStorage.setItem('sbr_insp_cache', JSON.stringify({ ts: Date.now(), data: inspectionViolations })); } catch(e) {}
+
+    renderInspectionList();
+  } catch(e) {
+    // Try offline cache
+    try {
+      const cache = JSON.parse(localStorage.getItem('sbr_insp_cache') || 'null');
+      if (cache && cache.data) {
+        inspectionViolations = cache.data;
+        renderInspectionList();
+        document.getElementById('inspSubtitle').textContent = `Offline — cached ${timeSince(cache.ts)} ago`;
+        return;
+      }
+    } catch(_) {}
+    document.getElementById('inspList').innerHTML = '<div class="empty">Could not load violations. Check your connection.</div>';
+  }
+}
+
+function renderInspectionList() {
+  const total   = inspectionViolations.length;
+  const checked = inspectionViolations.filter(v => inspectionChecked.has(v.id)).length;
+  const pct     = total > 0 ? Math.round(checked / total * 100) : 0;
+
+  document.getElementById('inspProgress').style.width = pct + '%';
+  document.getElementById('inspProgressLabel').textContent = `${checked} of ${total} checked`;
+  document.getElementById('inspSubtitle').textContent = `${total} open violation${total !== 1 ? 's' : ''}`;
+
+  const doneBtn = document.getElementById('inspDoneBtn');
+  doneBtn.style.display = total > 0 ? 'flex' : 'none';
+
+  if (total === 0) {
+    document.getElementById('inspList').innerHTML = '<div class="banner bg"><div class="icon">🎉</div><div class="text">No open violations. All clear!</div></div>';
+    return;
+  }
+
+  const html = inspectionViolations.map(v => {
+    const isDone   = inspectionChecked.has(v.id);
+    const deadline = v.deadline_date ? Math.ceil((new Date(v.deadline_date) - new Date()) / 86400000) : null;
+    const urgency  = deadline !== null && deadline <= 5 ? `color:#dc2626;font-weight:700` : `color:#9ca3af`;
+    const photoEl  = v.photo_url
+      ? `<img class="insp-photo" src="${v.photo_url}" loading="lazy">`
+      : `<div class="insp-photo-placeholder">🏠</div>`;
+
+    return `<div class="insp-card ${isDone ? 'done' : ''}" id="inspCard_${v.id}">
+      <div style="display:flex">
+        ${photoEl}
+        <div class="insp-body">
+          <div class="insp-addr">${v.address}</div>
+          <div class="insp-viol">${v.violation_label}</div>
+          <div class="insp-meta">
+            Stage ${v.stage || '?'} · <span class="pill s-${v.status==='pending_resolution'?'pending':'open'}" style="font-size:10px;padding:2px 7px">${v.status==='pending_resolution'?'Pending':'Open'}</span>
+          </div>
+          ${deadline !== null ? `<div style="font-size:11px;margin-top:3px;${urgency}">${deadline > 0 ? deadline + 'd left' : 'PAST DUE'}</div>` : ''}
+        </div>
+      </div>
+      ${isDone ? `<div style="padding:8px 12px;font-size:12px;color:#059669;font-weight:700;background:#f0fdf4">✓ Reviewed this session</div>` : `
+      <div class="insp-actions">
+        <button class="btn-resolve" onclick="initiateResolve('${v.id}')">✓ Resolved</button>
+        <button class="btn-followup" onclick="initiateFollowUp('${v.id}')">📷 Still Here</button>
+      </div>`}
+    </div>`;
+  }).join('');
+
+  document.getElementById('inspList').innerHTML = html;
+}
+
+// ── Resolve in field ──────────────────────────────────────
+function initiateResolve(violId) {
+  const v = inspectionViolations.find(x => x.id === violId);
+  if (!v) return;
+  R = { violation: v, photoFile: null, photoDataURL: null };
+
+  document.getElementById('resolveConfirmText').textContent =
+    `Mark this as resolved: "${v.violation_label}" at ${v.address}`;
+
+  if (v.photo_url) {
+    document.getElementById('resolvePriorPhoto').style.display = 'block';
+    document.getElementById('resolvePriorImg').src = v.photo_url;
+  } else {
+    document.getElementById('resolvePriorPhoto').style.display = 'none';
+  }
+  document.getElementById('resolveNotes').value = '';
+  clearResolvePhoto();
+  showScreen('resolve');
+}
+
+function onResolvePhotoSelected(event) {
+  const file = event.target.files[0]; if (!file) return;
+  R.photoFile = file;
+  const reader = new FileReader();
+  reader.onload = e => {
+    R.photoDataURL = e.target.result;
+    document.getElementById('resolvePreview').src = R.photoDataURL;
+    document.getElementById('resolveUploadZone').style.display = 'none';
+    document.getElementById('resolvePreviewWrap').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+  event.target.value = '';
+}
+
+function clearResolvePhoto() {
+  R.photoFile = null; R.photoDataURL = null;
+  document.getElementById('resolveUploadZone').style.display  = 'block';
+  document.getElementById('resolvePreviewWrap').style.display = 'none';
+}
+
+async function confirmResolveInField() {
+  if (!R.violation) return;
+  showLoading('Marking resolved…');
+
+  try {
+    const updates = {
+      status:      'resolved',
+      resolved_at: new Date().toISOString(),
+      ai_verdict:  'resolved',
+      ai_notes:    `Resolved in field by ${CONFIG.OFFICER}`,
+      notes:       (R.violation.notes || '') + `\n[RESOLVED IN FIELD by ${CONFIG.OFFICER} on ${new Date().toLocaleDateString()}${document.getElementById('resolveNotes').value ? ': ' + document.getElementById('resolveNotes').value : ''}]`,
+    };
+
+    // Upload resolution photo if provided
+    if (R.photoDataURL && sb) {
+      const path = `resolutions/${R.violation.violation_ref}_${Date.now()}.jpg`;
+      const blob = dataURLtoBlob(R.photoDataURL);
+      const { error: upErr } = await sb.storage.from('violation-photos').upload(path, blob, { contentType:'image/jpeg', upsert:true });
+      if (!upErr) {
+        const { data: pub } = sb.storage.from('violation-photos').getPublicUrl(path);
+        updates.resolution_photo = pub?.publicUrl;
+      }
+    }
+
+    if (sb) {
+      await sb.from('violations').update(updates).eq('id', R.violation.id);
+    } else {
+      // Save to offline queue
+      saveOffline({ action:'resolve', id: R.violation.id, updates, photoDataURL: R.photoDataURL });
+    }
+
+    // Mark as checked in this session
+    inspectionChecked.add(R.violation.id);
+
+    hideLoading();
+
+    // Show success then return to inspection
+    document.getElementById('successIcon').textContent   = '✅';
+    document.getElementById('successRef').textContent    = R.violation.violation_ref || 'Resolved';
+    document.getElementById('successDetail').textContent = `Marked resolved: ${R.violation.violation_label} at ${R.violation.address}`;
+    document.getElementById('successBackToInspection').style.display = 'flex';
+    showScreen('success');
+
+    loadHomeData();
+    // Remove from inspection list locally
+    inspectionViolations = inspectionViolations.filter(x => x.id !== R.violation.id);
+
+  } catch(err) {
+    hideLoading();
+    console.error(err);
+    alert('Error saving. Please try again.');
+  }
+}
+
+// ── Follow-up photo from inspection ──────────────────────
+function initiateFollowUp(violId) {
+  const v = inspectionViolations.find(x => x.id === violId);
+  if (!v) return;
+
+  fromInspection = true;
+  S = { photoFile:null, photoDataURL:null, lat:null, lng:null, address: v.address, gpsReady:false, isFollowUp:true, parentViolation: v };
+
+  document.getElementById('captureTitleText').textContent = 'Follow-up Photo';
+  document.getElementById('captureSubtitle').textContent  = `${v.violation_label} · Stage ${v.stage || '?'}`;
+  document.getElementById('captureBack').onclick = () => showScreen('inspection');
+
+  showScreen('capture');
+  startGPS();
+}
+
+function finishInspection() {
+  const total   = inspectionViolations.length;
+  const checked = inspectionViolations.filter(v => inspectionChecked.has(v.id)).length;
+  const missed  = total - checked;
+  let msg = `Inspection complete. ${checked} violation${checked !== 1 ? 's' : ''} reviewed.`;
+  if (missed > 0) msg += `\n\n${missed} violation${missed !== 1 ? 's were' : ' was'} not visited — they remain open and will be flagged in this week's digest.`;
+  alert(msg);
+  showScreen('home');
+  loadHomeData();
+}
+
+// ══════════════════════════════════════════════════════════
+// NEW VIOLATION FLOW
+// ══════════════════════════════════════════════════════════
+function startNewViolation() {
+  fromInspection = false;
+  S = { photoFile:null, photoDataURL:null, lat:null, lng:null, address:'', gpsReady:false, isFollowUp:false, parentViolation:null };
+
+  resetForm();
+  document.getElementById('captureTitleText').textContent = 'Take Photo';
+  document.getElementById('captureSubtitle').textContent  = 'Photograph the violation clearly';
+  document.getElementById('captureBack').onclick = () => showScreen('home');
+
+  showScreen('capture');
+  startGPS();
+}
+
+function resetForm() {
+  document.getElementById('addressInput').value = '';
+  document.getElementById('categorySelect').value = '';
+  document.getElementById('violationSelect').innerHTML = '<option value="">— Select Category First —</option>';
+  document.getElementById('violationSelect').disabled = true;
+  document.getElementById('notesInput').value = '';
+  document.getElementById('violNote').style.display = 'none';
+  document.getElementById('openViolsBanner').style.display = 'none';
+  document.getElementById('compareCard').style.display = 'none';
+  document.getElementById('gpsLoadingLabel').style.display = 'inline';
+  document.getElementById('gpsReadyLabel').style.display   = 'none';
+  document.getElementById('coordsHint').textContent = '';
+  document.getElementById('formBadge').textContent   = 'New violation';
+  document.getElementById('submitMeta').textContent  = `Officer: ${CONFIG.OFFICER} · ${fmtTime(new Date())}`;
+}
+
+// ══════════════════════════════════════════════════════════
+// CAMERA
+// ══════════════════════════════════════════════════════════
+function triggerCamera() { document.getElementById('photoInput').click(); }
+
+function onPhotoSelected(event) {
+  const file = event.target.files[0]; if (!file) return;
+  S.photoFile = file;
+  const reader = new FileReader();
+  reader.onload = e => {
+    S.photoDataURL = e.target.result;
+    document.getElementById('photoPreview').src = S.photoDataURL;
+    resetForm();
+
+    // If coming from inspection follow-up, pre-fill everything
+    if (S.isFollowUp && S.parentViolation) {
+      prefillFollowUp(S.parentViolation);
+    }
+
+    showScreen('form');
+    checkForMatchingViolations();
+  };
+  reader.readAsDataURL(file);
+  event.target.value = '';
+}
+
+function prefillFollowUp(v) {
+  document.getElementById('addressInput').value = v.address;
+  document.getElementById('formBadge').textContent = `📷 Follow-up — Stage ${v.stage || '?'}`;
+  S.address = v.address;
+
+  // Pre-select category and violation
+  const catSel = document.getElementById('categorySelect');
+  catSel.value = v.category_id || '';
+  if (v.category_id) {
+    onCategoryChange();
+    setTimeout(() => {
+      document.getElementById('violationSelect').value = v.violation_id || '';
+      onViolationChange();
+    }, 50);
+  }
+
+  // Show comparison card
+  if (v.photo_url) {
+    showCompareCard(v);
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// COMPARISON CARD (old photo vs new)
+// ══════════════════════════════════════════════════════════
+function showCompareCard(existingViolation) {
+  const card = document.getElementById('compareCard');
+  card.style.display = 'block';
+  card.innerHTML = `
+    <div class="compare-wrap">
+      <div class="compare-header">🔍 Comparing to prior violation (${existingViolation.violation_ref || 'on file'})</div>
+      <div class="compare-photos">
+        <div class="compare-col">
+          <div class="compare-col-label">Prior Photo</div>
+          <img src="${existingViolation.photo_url}" loading="lazy">
+        </div>
+        <div class="compare-divider"></div>
+        <div class="compare-col">
+          <div class="compare-col-label">Today's Photo</div>
+          <img src="${S.photoDataURL}" id="compareNewImg">
+        </div>
+      </div>
+      <div class="compare-actions">
+        <button class="cmp-btn cmp-same selected" id="cmpBtnSame" onclick="setFollowUpMode(true, '${existingViolation.id}')">🔴 Still Present</button>
+        <button class="cmp-btn cmp-new"            id="cmpBtnNew"  onclick="setFollowUpMode(false, null)">🆕 New / Different</button>
+      </div>
+    </div>`;
+}
+
+function setFollowUpMode(isFollowUp, parentId) {
+  S.isFollowUp = isFollowUp;
+  if (isFollowUp && parentId) {
+    S.parentViolation = inspectionViolations.find(v => v.id === parentId) || S.parentViolation;
+  }
+  document.getElementById('cmpBtnSame').classList.toggle('selected',  isFollowUp);
+  document.getElementById('cmpBtnNew').classList.toggle('selected',  !isFollowUp);
+  document.getElementById('formBadge').textContent = isFollowUp
+    ? `📷 Follow-up — Stage ${S.parentViolation?.stage || '?'}`
+    : 'New violation';
+}
+
+// ══════════════════════════════════════════════════════════
+// GPS
+// ══════════════════════════════════════════════════════════
+function startGPS() {
+  if (!navigator.geolocation) { document.getElementById('gpsLoadingLabel').textContent = 'GPS not available'; return; }
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      S.lat = pos.coords.latitude; S.lng = pos.coords.longitude; S.gpsReady = true;
+      document.getElementById('gpsLoadingLabel').style.display = 'none';
+      document.getElementById('gpsReadyLabel').style.display   = 'inline';
+      document.getElementById('coordsHint').textContent = `${S.lat.toFixed(6)}, ${S.lng.toFixed(6)}`;
+      if (!S.isFollowUp) reverseGeocode(S.lat, S.lng);
+    },
+    () => { document.getElementById('gpsLoadingLabel').textContent = 'GPS unavailable — enter address manually'; },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+  );
+}
+
+async function reverseGeocode(lat, lng) {
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
+      { headers: { 'Accept-Language':'en', 'User-Agent':'SBR-Violations/1.0' } });
+    const d = await r.json();
+    if (!d?.address) return;
+    const a = d.address;
+    const street = (a.house_number && a.road) ? `${a.house_number} ${a.road}` : (a.road || '');
+    const city   = a.city || a.town || a.village || 'Mesa';
+    const full   = [street, `${city}, ${a.state || 'AZ'} ${a.postcode || ''}`.trim()].filter(Boolean).join(', ');
+    if (full) {
+      S.address = full;
+      document.getElementById('addressInput').value = full;
+      checkForMatchingViolations();
+    }
+  } catch(e) {}
+}
+
+function onAddressEdit() {
+  S.address = document.getElementById('addressInput').value;
+  checkForMatchingViolations();
+}
+
+// ══════════════════════════════════════════════════════════
+// CHECK FOR MATCHING OPEN VIOLATIONS
+// When Crystal submits a photo at an address that already has
+// an open violation, show the comparison card automatically.
+// ══════════════════════════════════════════════════════════
+async function checkForMatchingViolations() {
+  const addr = (document.getElementById('addressInput').value || '').trim();
+  if (addr.length < 8) return;
+
+  // First check local inspection cache (works offline)
+  const street = addr.split(',')[0].trim().toLowerCase();
+  const matches = inspectionViolations.filter(v =>
+    v.address.toLowerCase().includes(street) && v.status !== 'resolved'
+  );
+
+  // If already in follow-up mode (from inspection), skip auto-detect
+  if (S.isFollowUp) return;
+
+  const banner = document.getElementById('openViolsBanner');
+  const text   = document.getElementById('openViolsText');
+
+  if (matches.length > 0) {
+    const m = matches[0]; // Show comparison for first match
+    text.textContent = `⚠️ ${matches.length} open violation${matches.length > 1 ? 's' : ''} at this address — tap 'Still Present' or 'New / Different' below`;
+    banner.style.display = 'flex';
+    showCompareCard(m);
+    // Pre-fill category and violation
+    const catSel = document.getElementById('categorySelect');
+    if (catSel.value === '' && m.category_id) {
+      catSel.value = m.category_id;
+      onCategoryChange();
+      setTimeout(() => { document.getElementById('violationSelect').value = m.violation_id || ''; onViolationChange(); }, 50);
+    }
+  } else {
+    banner.style.display = 'none';
+    document.getElementById('compareCard').style.display = 'none';
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// DROPDOWNS
+// ══════════════════════════════════════════════════════════
+function onCategoryChange() {
+  const catId = document.getElementById('categorySelect').value;
+  const vSel  = document.getElementById('violationSelect');
+  const note  = document.getElementById('violNote');
+  vSel.innerHTML = '<option value="">— Select Violation —</option>';
+  vSel.disabled = true; note.style.display = 'none';
+  if (!catId) return;
+  const cat = CATEGORIES.find(c => c.id === catId);
+  if (!cat) return;
+  cat.violations.forEach(v => {
+    const o = document.createElement('option');
+    o.value = v.id; o.textContent = v.label;
+    if (v.note) o.dataset.note = v.note;
+    vSel.appendChild(o);
+  });
+  vSel.disabled = false;
+}
+
+function onViolationChange() {
+  const sel = document.getElementById('violationSelect');
+  const opt = sel.options[sel.selectedIndex];
+  const note = document.getElementById('violNote');
+  note.textContent = opt?.dataset.note ? '📌 ' + opt.dataset.note : '';
+  note.style.display = opt?.dataset.note ? 'block' : 'none';
+}
+
+// ══════════════════════════════════════════════════════════
+// SUBMIT VIOLATION
+// ══════════════════════════════════════════════════════════
+async function submitViolation() {
+  const address = (document.getElementById('addressInput').value || '').trim();
+  const catId   = document.getElementById('categorySelect').value;
+  const violId  = document.getElementById('violationSelect').value;
+  const notes   = (document.getElementById('notesInput').value || '').trim();
+
+  if (!S.photoFile)  { alert('Please take a photo first.');          return; }
+  if (!address)      { alert('Please enter the property address.');   return; }
+  if (!catId)        { alert('Please select a violation category.');  return; }
+  if (!violId)       { alert('Please select the specific violation.'); return; }
+
+  const cat  = CATEGORIES.find(c => c.id === catId);
+  const viol = cat?.violations.find(v => v.id === violId);
+  const now  = new Date();
+  const deadline = new Date(now); deadline.setDate(deadline.getDate() + 20);
+
+  // If this is a follow-up, UPDATE the existing record's photo instead of creating new
+  if (S.isFollowUp && S.parentViolation) {
+    await submitFollowUpPhoto(viol, notes, now);
+    return;
+  }
+
+  // New violation record
+  const record = {
+    address, lat: S.lat, lng: S.lng,
+    category_id: catId, violation_id: violId, violation_label: viol?.label || violId,
+    status: 'open', cascade_processed: false,
+    officer: CONFIG.OFFICER, notes: notes || null,
+    created_at: now.toISOString(),
+    deadline_date: deadline.toISOString().split('T')[0],
+  };
+
+  if (!sb || !navigator.onLine) {
+    saveOffline({ action:'insert', record, photoDataURL: S.photoDataURL });
+    showSuccess('QUEUED', viol?.label, address, true);
+    return;
+  }
+
+  showLoading('Uploading photo…');
+  try {
+    const photoPath = `${now.getFullYear()}/${now.toISOString().replace(/[:.]/g,'-')}_crystal.jpg`;
+    const blob = dataURLtoBlob(S.photoDataURL);
+    const { error: upErr } = await sb.storage.from('violation-photos').upload(photoPath, blob, { contentType:'image/jpeg', upsert:false });
+    if (upErr) throw upErr;
+    const { data: pub } = sb.storage.from('violation-photos').getPublicUrl(photoPath);
+    record.photo_url = pub?.publicUrl;
+
+    setLoadingText('Saving…');
+    const { data: row, error: insErr } = await sb.from('violations').insert([record]).select().single();
+    if (insErr) throw insErr;
+
+    hideLoading();
+    const ref = row.violation_ref || `VIO-${now.getFullYear()}-????`;
+    showSuccess(ref, viol?.label, address, false);
+    loadHomeData();
+    // Add to local inspection list
+    inspectionViolations.push({ ...row });
+  } catch(err) {
+    hideLoading();
+    saveOffline({ action:'insert', record, photoDataURL: S.photoDataURL });
+    showSuccess('QUEUED', viol?.label, address, true);
+  }
+}
+
+async function submitFollowUpPhoto(viol, notes, now) {
+  const parent = S.parentViolation;
+  showLoading('Uploading follow-up photo…');
+
+  try {
+    // Upload new photo
+    const photoPath = `followups/${parent.violation_ref}_${now.toISOString().replace(/[:.]/g,'-')}.jpg`;
+    const blob = dataURLtoBlob(S.photoDataURL);
+
+    let newPhotoUrl = null;
+    if (sb) {
+      const { error: upErr } = await sb.storage.from('violation-photos').upload(photoPath, blob, { contentType:'image/jpeg', upsert:true });
+      if (!upErr) {
+        const { data: pub } = sb.storage.from('violation-photos').getPublicUrl(photoPath);
+        newPhotoUrl = pub?.publicUrl;
+      }
+    }
+
+    // Update existing violation record — new photo, reset cascade so it re-processes at next stage
+    const updates = {
+      photo_url:         newPhotoUrl || parent.photo_url,
+      cascade_processed: false,  // triggers cascade to re-process at next stage
+      status:            'open',
+      deadline_date:     new Date(now.getTime() + 20 * 86400000).toISOString().split('T')[0],
+      notes:             (parent.notes || '') + `\nFollow-up photo added ${now.toLocaleDateString()} by ${CONFIG.OFFICER}${notes ? ': ' + notes : ''}`,
+    };
+
+    if (sb) {
+      await sb.from('violations').update(updates).eq('id', parent.id);
+    } else {
+      saveOffline({ action:'resolve', id: parent.id, updates, photoDataURL: S.photoDataURL });
+    }
+
+    // Mark as checked in inspection
+    inspectionChecked.add(parent.id);
+
+    hideLoading();
+
+    document.getElementById('successIcon').textContent   = '📷';
+    document.getElementById('successRef').textContent    = parent.violation_ref || 'Updated';
+    document.getElementById('successDetail').innerHTML   = `Follow-up photo uploaded for <strong>${viol?.label || parent.violation_label}</strong> at <strong>${parent.address}</strong>.<br><br>The cascade engine will send the next-stage notice within 30 minutes.`;
+    document.getElementById('successBackToInspection').style.display = fromInspection ? 'flex' : 'none';
+    showScreen('success');
+    loadHomeData();
+
+    // Update local list
+    const idx = inspectionViolations.findIndex(v => v.id === parent.id);
+    if (idx >= 0 && newPhotoUrl) inspectionViolations[idx].photo_url = newPhotoUrl;
+
+  } catch(err) {
+    hideLoading();
+    console.error(err);
+    alert('Upload failed. Please try again.');
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// SUCCESS SCREEN
+// ══════════════════════════════════════════════════════════
+function showSuccess(ref, violLabel, address, isQueued) {
+  document.getElementById('successIcon').textContent   = isQueued ? '⏳' : '✅';
+  document.getElementById('successRef').textContent    = isQueued ? 'Saved Offline' : ref;
+  document.getElementById('successDetail').innerHTML   = isQueued
+    ? `No network — saved locally and will sync when signal returns.<br><br><strong>${address}</strong><br>${violLabel}`
+    : `<strong>${address}</strong><br>${violLabel}<br><br>The cascade engine will send the appropriate notice within 30 minutes.`;
+  document.getElementById('successBackToInspection').style.display = fromInspection ? 'flex' : 'none';
+  showScreen('success');
+  renderQueueBanner();
+}
+
+// ══════════════════════════════════════════════════════════
+// OFFLINE QUEUE
+// ══════════════════════════════════════════════════════════
+function saveOffline(item) {
+  const q = getQueue();
+  q.push({ ...item, savedAt: new Date().toISOString() });
+  localStorage.setItem('sbr_vio_queue', JSON.stringify(q));
+  renderQueueBanner();
+}
+
+function getQueue() { try { return JSON.parse(localStorage.getItem('sbr_vio_queue') || '[]'); } catch { return []; } }
+
+function renderQueueBanner() {
+  const q = getQueue();
+  const el = document.getElementById('queueBanner');
+  if (q.length) {
+    document.getElementById('queueBannerText').textContent = `${q.length} item${q.length > 1?'s':''} queued — will sync when signal returns.`;
+    el.style.display = 'flex';
+  } else { el.style.display = 'none'; }
+}
+
+async function tryFlushQueue() {
+  if (!navigator.onLine || !sb) return;
+  const q = getQueue(); if (!q.length) return;
+  const remaining = [];
+
+  for (const item of q) {
+    try {
+      if (item.action === 'insert') {
+        const blob = dataURLtoBlob(item.photoDataURL);
+        const path = `${new Date(item.record.created_at).getFullYear()}/${item.record.created_at.replace(/[:.]/g,'-')}_offline.jpg`;
+        await sb.storage.from('violation-photos').upload(path, blob, { contentType:'image/jpeg', upsert:true });
+        const { data: pub } = sb.storage.from('violation-photos').getPublicUrl(path);
+        item.record.photo_url = pub?.publicUrl;
+        await sb.from('violations').insert([item.record]);
+      } else if (item.action === 'resolve') {
+        if (item.photoDataURL) {
+          const blob = dataURLtoBlob(item.photoDataURL);
+          const path = `resolutions/offline_${Date.now()}.jpg`;
+          await sb.storage.from('violation-photos').upload(path, blob, { contentType:'image/jpeg', upsert:true });
+          const { data: pub } = sb.storage.from('violation-photos').getPublicUrl(path);
+          item.updates.resolution_photo = pub?.publicUrl;
+        }
+        await sb.from('violations').update(item.updates).eq('id', item.id);
+      }
+    } catch(e) { remaining.push(item); }
+  }
+
+  localStorage.setItem('sbr_vio_queue', JSON.stringify(remaining));
+  renderQueueBanner();
+  if (remaining.length < q.length) loadHomeData();
+}
+
+// ══════════════════════════════════════════════════════════
+// NETWORK
+// ══════════════════════════════════════════════════════════
+function updateOfflineUI() {
+  document.getElementById('offlinePill').classList.toggle('show', !navigator.onLine);
+}
+
+// ══════════════════════════════════════════════════════════
+// LOADING
+// ══════════════════════════════════════════════════════════
+function showLoading(t)   { document.getElementById('loadingText').textContent = t; document.getElementById('loadingOverlay').classList.add('show'); }
+function setLoadingText(t){ document.getElementById('loadingText').textContent = t; }
+function hideLoading()    { document.getElementById('loadingOverlay').classList.remove('show'); }
+
+// ══════════════════════════════════════════════════════════
+// UTILITIES
+// ══════════════════════════════════════════════════════════
+function dataURLtoBlob(dataURL) {
+  const [hdr, raw] = dataURL.split(',');
+  const mime = hdr.match(/:(.*?);/)[1];
+  const bin  = atob(raw); const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
+
+function fmtTime(d) { return d.toLocaleString('en-US', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }); }
+
+function timeSince(ts) {
+  const mins = Math.round((Date.now() - ts) / 60000);
+  return mins < 60 ? `${mins}m` : `${Math.round(mins/60)}h`;
+}
+
+// ══════════════════════════════════════════════════════════
+// BOOT
+// ══════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', init);
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>

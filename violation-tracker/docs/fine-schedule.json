@@ -1,0 +1,79 @@
+{
+  "stages": [
+    {
+      "stage": 1,
+      "label": "1st Observation — Courtesy Notice",
+      "fine": 0,
+      "letter": false,
+      "certified": false,
+      "board_approval": false,
+      "action": "Email only. No letter. No fine. 20-day deadline to resolve."
+    },
+    {
+      "stage": 2,
+      "label": "2nd Observation — Formal Notice",
+      "fine": 0,
+      "letter": true,
+      "certified": false,
+      "board_approval": false,
+      "action": "Mailed letter. No fine. 20-day deadline."
+    },
+    {
+      "stage": 3,
+      "label": "3rd Observation — 1st Fine",
+      "fine": 50,
+      "letter": true,
+      "certified": false,
+      "board_approval": false,
+      "action": "Mailed letter. $50 fine posted to Buildium ledger."
+    },
+    {
+      "stage": 4,
+      "label": "4th Observation — 2nd Fine",
+      "fine": 100,
+      "letter": true,
+      "certified": false,
+      "board_approval": false,
+      "action": "Mailed letter. $100 fine posted to Buildium ledger."
+    },
+    {
+      "stage": 5,
+      "label": "5th Observation — 3rd Fine",
+      "fine": 150,
+      "letter": true,
+      "certified": false,
+      "board_approval": false,
+      "action": "Mailed letter. $150 fine posted to Buildium ledger."
+    },
+    {
+      "stage": 6,
+      "label": "6th Observation — Right to Cure",
+      "fine": 55,
+      "letter": true,
+      "certified": true,
+      "board_approval": true,
+      "action": "Certified letter. $55 charge. Board must approve before sending."
+    },
+    {
+      "stage": 7,
+      "label": "7th Observation — HOA Cures at Owner Expense",
+      "fine": 200,
+      "letter": true,
+      "certified": true,
+      "board_approval": true,
+      "action": "Board decides action. $200 minimum charge. HOA arranges cure at owner expense."
+    }
+  ],
+  "rules": {
+    "min_days_between_notices": 20,
+    "deadline_days": 20,
+    "trash_blackout_days": {
+      "black_barrels": "Monday",
+      "blue_barrels": "Thursday",
+      "note": "No trash can violation the day before or after pickup"
+    },
+    "not_currently_enforced": [
+      "Fewer than 3 living plants in front yard (minimum vegetation rule)"
+    ]
+  }
+}

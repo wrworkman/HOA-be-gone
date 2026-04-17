@@ -1,0 +1,82 @@
+{
+  "categories": [
+    {
+      "id": "exterior_maintenance",
+      "label": "Exterior Home Maintenance & Appearance",
+      "violations": [
+        { "id": "peeling_paint",        "label": "Peeling paint (house, garage door, trim, shed)", "note": "Only cite if significantly deteriorated" },
+        { "id": "paint_color",          "label": "Unapproved exterior paint color change (including fence)" },
+        { "id": "damaged_gate_fence",   "label": "Broken, rusted, or damaged gate or fence" },
+        { "id": "window_coverings",     "label": "Unapproved or damaged window coverings (sheets, foil, torn screens)" },
+        { "id": "roof_equipment",       "label": "Roof-mounted equipment (non-approved solar panels)" },
+        { "id": "shutters_awnings",     "label": "Unmaintained shutters, awnings, or building elements" }
+      ]
+    },
+    {
+      "id": "landscaping",
+      "label": "Landscaping & Yard Maintenance",
+      "violations": [
+        { "id": "weeds",                "label": "Overgrown weeds, noxious grass, or dead plants", "note": "Only cite if ongoing / over 6 inches" },
+        { "id": "bare_dirt",            "label": "Bare dirt or missing granite (must have grass, turf, or granite)" },
+        { "id": "yard_clutter",         "label": "Trash, broken items, or non-harmonious ornaments in yard" },
+        { "id": "trees_pruning",        "label": "Trees not properly pruned (low-hanging or blocking sidewalks)" }
+      ]
+    },
+    {
+      "id": "structures",
+      "label": "Structures & Additions",
+      "violations": [
+        { "id": "shed_visible",         "label": "Shed or patio cover visible above fence line (unapproved)" },
+        { "id": "unapproved_structure", "label": "Oversized or unapproved ramada, gazebo, or play structure" },
+        { "id": "driveway_expansion",   "label": "Driveway expansion without ARC approval" },
+        { "id": "wall_height",          "label": "Perimeter wall height increase without approval" },
+        { "id": "construction_quality", "label": "Poor construction quality or unapproved materials" }
+      ]
+    },
+    {
+      "id": "vehicles_parking",
+      "label": "Vehicle & Parking Violations",
+      "violations": [
+        { "id": "parking_surface",      "label": "Parking on unapproved surface (dirt or grass)" },
+        { "id": "driveway_coverage",    "label": "Driveway/parking area exceeds 50% of front yard" },
+        { "id": "inoperable_vehicle",   "label": "Vehicle with expired registration or inoperable condition" },
+        { "id": "rv_trailer_boat",      "label": "RV, trailer, boat, or truck over 1 ton visible from street" },
+        { "id": "common_area_parking",  "label": "Using common area or vacant lot for vehicle access/parking" },
+        { "id": "longterm_street",      "label": "Long-term street parking (non-occasional)" }
+      ]
+    },
+    {
+      "id": "trash_containers",
+      "label": "Trash & Containers",
+      "violations": [
+        { "id": "bins_visible",         "label": "Trash or recycling bins visible on non-collection day", "note": "Do NOT cite day before/after Monday (black) or Thursday (blue) pickup" },
+        { "id": "trash_outside",        "label": "Trash stored outside of designated covered containers" }
+      ]
+    },
+    {
+      "id": "recreation",
+      "label": "Recreation & Equipment",
+      "violations": [
+        { "id": "basketball_hoop",      "label": "Unapproved basketball hoop (attached to house, torn, or poor condition)" },
+        { "id": "holiday_decorations",  "label": "Holiday decorations not removed within 30 days" }
+      ]
+    },
+    {
+      "id": "general_conduct",
+      "label": "General Use & Conduct",
+      "violations": [
+        { "id": "home_business",        "label": "Operating a business from home (zoning violation or creates traffic)" },
+        { "id": "arc_construction",     "label": "Exterior construction without prior ARC approval" },
+        { "id": "city_code",            "label": "Using property in violation of Mesa City Code" }
+      ]
+    },
+    {
+      "id": "common_areas",
+      "label": "Common Areas & Repairs",
+      "violations": [
+        { "id": "common_wall_damage",   "label": "Damage to Association common wall or landscaping during construction" },
+        { "id": "common_modification",  "label": "Unauthorized modification to common area" }
+      ]
+    }
+  ]
+}

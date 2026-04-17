@@ -1,0 +1,37 @@
+# SBR Violation Tracker — Weekly Digest
+# Sends Crystal a summary email every Monday at 7:00 AM Arizona time (MST = UTC-7)
+
+name: Weekly Crystal Digest
+
+on:
+  schedule:
+    - cron: '0 14 * * 1'   # 7:00 AM MST (UTC-7) every Monday
+  workflow_dispatch:         # Manual trigger
+
+jobs:
+  send-digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install supabase requests
+
+      - name: Send weekly digest
+        env:
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          GMAIL_FROM:           ${{ secrets.GMAIL_FROM }}
+          GMAIL_APP_PASSWORD:   ${{ secrets.GMAIL_APP_PASSWORD }}
+          CRYSTAL_EMAIL:        ${{ secrets.CRYSTAL_EMAIL }}
+          RESOLUTION_PORTAL_URL:${{ secrets.RESOLUTION_PORTAL_URL }}
+        run: python backend/weekly_digest.py

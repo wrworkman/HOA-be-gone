@@ -1,0 +1,14 @@
+# Credentials — never commit these
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Logs
+*.log
+
+# Windows
+Thumbs.db
+desktop.ini

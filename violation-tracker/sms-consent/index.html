@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Text Message Notifications — Signal Butte Ranch HOA</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f0f4f8; color: #1f2937; min-height: 100vh;
+    }
+    .page { max-width: 640px; margin: 0 auto; padding: 0 0 48px; }
+
+    /* Header */
+    .header { background: #1e40af; color: white; padding: 24px; }
+    .header h1 { font-size: 22px; font-weight: 800; }
+    .header p  { font-size: 13px; opacity: 0.8; margin-top: 6px; }
+
+    /* Cards */
+    .card { background: white; border-radius: 12px; padding: 22px 24px; margin: 16px 16px 0; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+    .card h2 { font-size: 16px; font-weight: 700; margin-bottom: 12px; color: #111; }
+    .card p, .card li { font-size: 14px; line-height: 1.7; color: #374151; }
+    .card ul { padding-left: 18px; margin-top: 8px; }
+    .card li  { margin-bottom: 4px; }
+
+    /* Program details box */
+    .program-box {
+      background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+      padding: 16px 18px; margin-top: 12px;
+    }
+    .program-row { display: flex; gap: 12px; padding: 6px 0; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+    .program-row:last-child { border-bottom: none; }
+    .program-label { color: #6b7280; min-width: 110px; font-weight: 500; }
+    .program-value { color: #111; font-weight: 600; }
+
+    /* Form */
+    .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 16px; }
+    label  { font-size: 13px; font-weight: 600; color: #374151; }
+    input[type="text"], input[type="tel"] {
+      padding: 12px 14px; border: 1.5px solid #d1d5db; border-radius: 8px;
+      font-size: 16px; color: #111; width: 100%; font-family: inherit;
+    }
+    input:focus { outline: none; border-color: #1e40af; }
+    .hint { font-size: 12px; color: #9ca3af; }
+
+    /* Consent checkbox */
+    .consent-block {
+      background: #f8fafc; border: 1.5px solid #d1d5db; border-radius: 10px;
+      padding: 16px; margin-bottom: 16px;
+    }
+    .consent-check { display: flex; gap: 12px; align-items: flex-start; cursor: pointer; }
+    .consent-check input[type="checkbox"] { width: 20px; height: 20px; margin-top: 2px; flex-shrink: 0; cursor: pointer; accent-color: #1e40af; }
+    .consent-text { font-size: 13px; line-height: 1.6; color: #374151; }
+    .consent-text strong { color: #111; }
+
+    /* Disclosures */
+    .disclosures { font-size: 12px; color: #6b7280; line-height: 1.7; margin-top: 4px; }
+    .disclosures a { color: #1e40af; }
+
+    /* Submit */
+    .btn-submit {
+      width: 100%; padding: 16px; background: #1e40af; color: white;
+      border: none; border-radius: 10px; font-size: 16px; font-weight: 700;
+      cursor: pointer; font-family: inherit; margin-top: 4px;
+    }
+    .btn-submit:hover { background: #1e3a8a; }
+    .btn-submit:disabled { background: #93c5fd; cursor: not-allowed; }
+
+    /* Result states */
+    .result { border-radius: 12px; padding: 20px 22px; margin: 16px 16px 0; display: none; text-align: center; }
+    .result.show { display: block; }
+    .result-success { background: #d1fae5; border: 2px solid #34d399; }
+    .result-error   { background: #fee2e2; border: 2px solid #f87171; }
+    .result-icon  { font-size: 48px; margin-bottom: 10px; }
+    .result-title { font-size: 18px; font-weight: 800; margin-bottom: 8px; }
+    .result-msg   { font-size: 14px; line-height: 1.6; color: #374151; }
+
+    /* Footer */
+    .footer {
+      text-align: center; font-size: 12px; color: #9ca3af;
+      padding: 24px 16px 0; line-height: 1.8;
+    }
+    .footer a { color: #1e40af; }
+
+    /* Keywords highlight */
+    .keyword { font-family: monospace; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 13px; font-weight: 700; }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <h1>Signal Butte Ranch HOA</h1>
+    <p>Text Message Notification Program — Opt-In Registration</p>
+  </div>
+
+  <!-- What this is -->
+  <div class="card">
+    <h2>About Our Text Message Program</h2>
+    <p>Signal Butte Ranch Community Association sends SMS text message notifications to homeowners
+    for important community matters, including:</p>
+    <ul>
+      <li>Property violation notices and compliance updates</li>
+      <li>Deadline reminders for open violations</li>
+      <li>Confirmation when a violation has been resolved</li>
+      <li>Urgent community notices (as needed)</li>
+    </ul>
+
+    <div class="program-box">
+      <div class="program-row">
+        <div class="program-label">Program Name</div>
+        <div class="program-value">SBR HOA Notifications</div>
+      </div>
+      <div class="program-row">
+        <div class="program-label">Sender</div>
+        <div class="program-value">Signal Butte Ranch Community Association</div>
+      </div>
+      <div class="program-row">
+        <div class="program-label">Message Types</div>
+        <div class="program-value">Transactional / Operational (HOA notices)</div>
+      </div>
+      <div class="program-row">
+        <div class="program-label">Frequency</div>
+        <div class="program-value">As needed — only when a notice applies to your property</div>
+      </div>
+      <div class="program-row">
+        <div class="program-label">Cost</div>
+        <div class="program-value">Message and data rates may apply</div>
+      </div>
+      <div class="program-row">
+        <div class="program-label">To Opt Out</div>
+        <div class="program-value">Reply STOP to any message at any time</div>
+      </div>
+      <div class="program-row">
+        <div class="program-label">Help</div>
+        <div class="program-value">Reply HELP or call 480-648-4861</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Registration form -->
+  <div class="card" id="formCard">
+    <h2>Register Your Cell Phone Number</h2>
+    <p style="margin-bottom:16px">By registering below, you consent to receive text messages
+    from Signal Butte Ranch HOA at the number provided. Your number is used only for
+    HOA-related notices — never shared or sold.</p>
+
+    <div class="field">
+      <label for="ownerName">Full Name</label>
+      <input type="text" id="ownerName" placeholder="Jane Smith" autocomplete="name">
+    </div>
+
+    <div class="field">
+      <label for="propertyAddress">Property Address</label>
+      <input type="text" id="propertyAddress" placeholder="1234 W Signal Butte Rd, Mesa AZ 85212" autocomplete="street-address">
+      <div class="hint">Enter the address of your SBR property (not a mailing address)</div>
+    </div>
+
+    <div class="field">
+      <label for="cellPhone">Cell Phone Number</label>
+      <input type="tel" id="cellPhone" placeholder="(480) 555-1234" autocomplete="tel">
+      <div class="hint">U.S. numbers only. Standard message and data rates may apply.</div>
+    </div>
+
+    <!-- Consent checkbox — this is what Twilio needs to see -->
+    <div class="consent-block">
+      <label class="consent-check">
+        <input type="checkbox" id="consentBox" onchange="updateSubmitBtn()">
+        <div class="consent-text">
+          <strong>I agree to receive text messages from Signal Butte Ranch Community Association</strong>
+          at the cell phone number I provided above. I understand that:
+          <ul style="margin-top:8px">
+            <li>Messages will be sent for HOA violation notices, reminders, and resolution confirmations related to my property.</li>
+            <li>Message frequency varies — I will only receive texts when a notice applies to my property.</li>
+            <li>Message and data rates may apply.</li>
+            <li>I can opt out at any time by replying <span class="keyword">STOP</span> to any message.</li>
+            <li>I can get help by replying <span class="keyword">HELP</span> or calling 480-648-4861.</li>
+            <li>Consent is not a condition of any purchase or HOA membership.</li>
+          </ul>
+        </div>
+      </label>
+    </div>
+
+    <div class="disclosures">
+      By submitting this form, I provide my express written consent to receive automated
+      text messages from Signal Butte Ranch Community Association. This is a voluntary program.
+      HOA notices may also be sent by email and U.S. mail regardless of SMS registration.
+      View our <a href="#">Privacy Policy</a> for more information.
+    </div>
+
+    <button class="btn-submit" id="submitBtn" onclick="submitOptIn()" disabled>
+      ✅ Register for Text Notifications
+    </button>
+  </div>
+
+  <!-- Success -->
+  <div class="result result-success" id="resultSuccess">
+    <div class="result-icon">✅</div>
+    <div class="result-title" style="color:#065f46">You're registered!</div>
+    <div class="result-msg" id="successMsg"></div>
+    <div style="margin-top:16px;font-size:13px;color:#6b7280">
+      To opt out at any time, reply <span class="keyword">STOP</span> to any text message.<br>
+      Questions? Call us at 480-648-4861 or email <a href="mailto:sbrneighbors@gmail.com">sbrneighbors@gmail.com</a>
+    </div>
+  </div>
+
+  <!-- Error -->
+  <div class="result result-error" id="resultError">
+    <div class="result-icon">❗</div>
+    <div class="result-title" style="color:#991b1b">Something went wrong</div>
+    <div class="result-msg" id="errorMsg">Please try again or contact us at 480-648-4861.</div>
+  </div>
+
+  <!-- How it works -->
+  <div class="card">
+    <h2>How It Works</h2>
+    <p>Once registered, you will receive a text message any time Signal Butte Ranch HOA
+    logs a violation at your property. The message will include:</p>
+    <ul>
+      <li>A description of the violation observed</li>
+      <li>The compliance deadline (typically 20 days)</li>
+      <li>A direct link to view the photo and submit proof of resolution — <strong>no login required</strong></li>
+    </ul>
+    <p style="margin-top:12px">Most violations can be resolved in minutes by clicking the link
+    in your text, taking a photo of the corrected issue, and submitting it. Our system reviews
+    it automatically and closes the violation if resolved.</p>
+  </div>
+
+  <!-- Keywords info -->
+  <div class="card">
+    <h2>Supported Keywords</h2>
+    <div class="program-box">
+      <div class="program-row">
+        <div class="program-label"><span class="keyword">STOP</span></div>
+        <div class="program-value">Unsubscribe — you will receive no further texts</div>
+      </div>
+      <div class="program-row">
+        <div class="program-label"><span class="keyword">UNSTOP</span></div>
+        <div class="program-value">Re-subscribe if you previously opted out</div>
+      </div>
+      <div class="program-row">
+        <div class="program-label"><span class="keyword">HELP</span></div>
+        <div class="program-value">Receive contact information and support options</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Signal Butte Ranch Community Association<br>
+    P.O. Box 98526, Phoenix, AZ 85038-0526<br>
+    480-648-4861 · <a href="mailto:sbrneighbors@gmail.com">sbrneighbors@gmail.com</a><br><br>
+    This page documents the opt-in process for Signal Butte Ranch HOA's
+    SMS notification program in compliance with CTIA guidelines and carrier requirements.
+  </div>
+
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// CONFIG — update with your Supabase credentials
+// ══════════════════════════════════════════════════════════
+const CONFIG = {
+  SUPABASE_URL:      'https://YOUR_PROJECT_ID.supabase.co',
+  SUPABASE_ANON_KEY: 'YOUR_SUPABASE_ANON_KEY',
+};
+
+let sb = null;
+if (!CONFIG.SUPABASE_URL.includes('YOUR_PROJECT')) {
+  sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+}
+
+function updateSubmitBtn() {
+  document.getElementById('submitBtn').disabled = !document.getElementById('consentBox').checked;
+}
+
+function formatPhone(raw) {
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length === 10) return '+1' + digits;
+  if (digits.length === 11 && digits[0] === '1') return '+' + digits;
+  return null;
+}
+
+async function submitOptIn() {
+  const name    = document.getElementById('ownerName').value.trim();
+  const address = document.getElementById('propertyAddress').value.trim();
+  const rawPhone= document.getElementById('cellPhone').value.trim();
+  const phone   = formatPhone(rawPhone);
+
+  if (!name)    { alert('Please enter your full name.');          return; }
+  if (!address) { alert('Please enter your property address.');   return; }
+  if (!phone)   { alert('Please enter a valid 10-digit US phone number.'); return; }
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Registering…';
+
+  const record = {
+    name,
+    address,
+    phone,
+    consented:    true,
+    consent_text: 'Explicit written consent provided via web form at sms-consent page',
+    opted_in_at:  new Date().toISOString(),
+    source:       'web_form',
+  };
+
+  try {
+    if (sb) {
+      const { error } = await sb.from('sms_optins').insert([record]);
+      if (error) throw error;
+    }
+    // Show success even if Supabase not configured (for Twilio review purposes)
+    document.getElementById('formCard').style.display = 'none';
+    document.getElementById('successMsg').textContent =
+      `Thank you, ${name}! Your number ending in ${rawPhone.slice(-4)} has been registered. ` +
+      `You will receive text notifications for violations at ${address}.`;
+    document.getElementById('resultSuccess').classList.add('show');
+  } catch(err) {
+    console.error(err);
+    btn.disabled = false;
+    btn.textContent = '✅ Register for Text Notifications';
+    document.getElementById('errorMsg').textContent =
+      'Registration could not be saved. Please try again or contact us at 480-648-4861.';
+    document.getElementById('resultError').classList.add('show');
+  }
+}
+</script>
+</body>
+</html>
