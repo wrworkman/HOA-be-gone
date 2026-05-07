@@ -1,0 +1,31 @@
+name: Payment Plan Monitor
+
+on:
+  schedule:
+    # Runs on the 2nd of every month at 8:05 AM MST (15:05 UTC)
+    # Runs 5 minutes after the main collections automation
+    - cron: '5 15 2 * *'
+  workflow_dispatch:   # allows manual trigger from GitHub Actions tab
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests python-dotenv
+
+      - name: Run Payment Plan Monitor
+        env:
+          BUILDIUM_CLIENT_ID:     ${{ secrets.BUILDIUM_CLIENT_ID }}
+          BUILDIUM_CLIENT_SECRET: ${{ secrets.BUILDIUM_CLIENT_SECRET }}
+          EMAIL_FROM:             ${{ secrets.GMAIL_FROM }}
+          EMAIL_PASSWORD:         ${{ secrets.GMAIL_APP_PASSWORD }}
+          EMAIL_TO:               ${{ secrets.CRYSTAL_EMAIL }}
+        run: python payment_plan_monitor.py
